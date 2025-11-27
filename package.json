@@ -5,8 +5,9 @@
   "main": "netlify/functions/api.js",
   "scripts": {
     "dev": "netlify dev",
-    "build": "echo 'No build step required'",
-    "deploy": "netlify deploy --prod"
+    "build": "tsc",
+    "deploy": "npm run build && netlify deploy --prod",
+    "type-check": "tsc --noEmit"
   },
   "keywords": ["netlify", "serverless", "api"],
   "author": "",
@@ -17,6 +18,9 @@
     "dotenv": "^16.3.1"
   },
   "devDependencies": {
-    "netlify-cli": "^17.10.1"
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.6",
+    "netlify-cli": "^17.10.1",
+    "typescript": "^5.3.3"
   }
 }
