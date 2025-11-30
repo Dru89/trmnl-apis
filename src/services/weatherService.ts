@@ -1,5 +1,6 @@
 import { WeatherCondition, OpenWeatherResponse } from "../types";
 import { getStore } from "@netlify/blobs";
+import Cache from "./cache";
 
 /**
  * Maps OpenWeatherMap weather condition IDs to our WeatherCondition enum
@@ -67,17 +68,44 @@ function getMostSignificantWeather(
   }, WeatherCondition.CLEAR);
 }
 
-interface CachedWeatherData {
+interface WeatherData {
   temperature: number;
   moonPhase: number;
   weather: WeatherCondition;
-  cachedAt: number;
+}
+
+async function getWeatherDataFromAPI(
+  lat: number,
+  lon: number,
+  apiKey: string
+): Promise<WeatherData> {
+  // Fetch fresh data from API
+  const url = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&exclude=minutely,hourly,alerts&units=imperial&appid=${apiKey}`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(
+      `OpenWeatherMap API error: ${response.status} ${response.statusText}`
+    );
+  }
+
+  const data = (await response.json()) as OpenWeatherResponse;
+
+  // Get all weather conditions for today and find the most significant
+  const todayWeatherConditions = data.daily[0].weather.map((w) =>
+    mapWeatherCondition(w.id)
+  );
+  const weather = getMostSignificantWeather(todayWeatherConditions);
+
+  return {
+    temperature: Math.round(data.current.temp),
+    moonPhase: data.daily[0].moon_phase,
+    weather,
+  };
 }
 
 const CACHE_DURATION_MS = 10 * 60 * 1000; // 10 minutes
-
-// Simple in-memory cache for local development (when Netlify Blobs is unavailable)
-const localCache = new Map<string, CachedWeatherData>();
+const cache = new Cache<WeatherData>("weather-cache", CACHE_DURATION_MS);
 
 export async function getWeatherData(
   lat: number,
@@ -95,101 +123,14 @@ export async function getWeatherData(
 
   // Create a cache key based on coordinates
   const cacheKey = `weather-${lat}-${lon}`;
-  let useLocalCache = false;
 
-  // Try to get cached data from Netlify Blobs
-  try {
-    const store = getStore("weather-cache");
-    const cachedData = (await store.get(cacheKey, {
-      type: "json",
-    })) as CachedWeatherData | null;
-
-    if (cachedData && cachedData.cachedAt) {
-      const age = Date.now() - cachedData.cachedAt;
-
-      // If cache is less than 10 minutes old, return it
-      if (age < CACHE_DURATION_MS) {
-        console.log('Returning cached weather data from Netlify Blobs');
-        return {
-          temperature: cachedData.temperature,
-          moonPhase: cachedData.moonPhase,
-          weather: cachedData.weather,
-        };
-      }
-    }
-  } catch (error) {
-    // Netlify Blobs not available, fall back to in-memory cache
-    useLocalCache = true;
-    console.log("Using local in-memory cache (Netlify Blobs unavailable)");
-
-    const localData = localCache.get(cacheKey);
-    if (localData && localData.cachedAt) {
-      const age = Date.now() - localData.cachedAt;
-
-      if (age < CACHE_DURATION_MS) {
-        console.log('Returning cached weather data from local cache');
-        return {
-          temperature: localData.temperature,
-          moonPhase: localData.moonPhase,
-          weather: localData.weather,
-        };
-      }
-    }
+  const cachedData = await cache.get(cacheKey);
+  if (cachedData != null) {
+    return cachedData;
   }
 
-  // Fetch fresh data from API
-  const url = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&exclude=minutely,hourly,alerts&units=imperial&appid=${apiKey}`;
-
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error(
-      `OpenWeatherMap API error: ${response.status} ${response.statusText}`
-    );
-  }
-
-  const data = (await response.json()) as OpenWeatherResponse;
-
-  // Current temperature
-  const temperature = Math.round(data.current.temp);
-
-  // Tonight's moon phase (from today's daily forecast)
-  const moonPhase = data.daily[0].moon_phase;
-
-  // Get all weather conditions for today and find the most significant
-  const todayWeatherConditions = data.daily[0].weather.map((w) =>
-    mapWeatherCondition(w.id)
-  );
-  const weather = getMostSignificantWeather(todayWeatherConditions);
-
-  const result = {
-    temperature,
-    moonPhase,
-    weather,
-  };
-
-  // Cache the result
-  const cacheData: CachedWeatherData = {
-    ...result,
-    cachedAt: Date.now(),
-  };
-
-  if (useLocalCache) {
-    // Use in-memory cache for local development
-    localCache.set(cacheKey, cacheData);
-    console.log('Weather data cached in local memory');
-  } else {
-    // Use Netlify Blobs in production
-    try {
-      const store = getStore("weather-cache");
-      await store.set(cacheKey, JSON.stringify(cacheData));
-      console.log('Weather data cached in Netlify Blobs');
-    } catch (error) {
-      // Fall back to local cache if Netlify Blobs fails
-      localCache.set(cacheKey, cacheData);
-      console.log('Weather data cached in local memory (Netlify Blobs failed)');
-    }
-  }
+  const result = await getWeatherDataFromAPI(lat, lon, apiKey);
+  await cache.set(cacheKey, result);
 
   return result;
 }
