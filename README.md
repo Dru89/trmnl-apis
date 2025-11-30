@@ -20,6 +20,12 @@ A TypeScript serverless API service built with Express and deployed on Netlify. 
    LATITUDE=40.7128
    LONGITUDE=-74.0060
    TIMEZONE=America/Los_Angeles
+
+   # Optional recycling schedule configuration
+   RECYCLING_DAY_OF_WEEK=2
+   RECYCLING_CUTOFF_HOUR=12
+   RECYCLING_REFERENCE_DATE=2025-11-18
+   RECYCLING_REFERENCE_WAS_RECYCLING=true
    ```
    Get a free OpenWeatherMap API key at https://openweathermap.org/api
 
@@ -84,7 +90,12 @@ Returns current weather conditions, moon phase, temperature, and recycling sched
 - `"This week is trash only"` - No recycling this Tuesday
 - `"Next week is trash only"` - No recycling next Tuesday
 
-**Note:** Recycling calculations use the configured timezone (defaults to Pacific Time). After 12pm on Tuesday, the system looks ahead to next week's pickup.
+**Recycling Schedule Configuration:**
+- Day of week: Configurable via `RECYCLING_DAY_OF_WEEK` (0=Sunday, 1=Monday, 2=Tuesday, etc.) - defaults to 2 (Tuesday)
+- Cutoff time: Configurable via `RECYCLING_CUTOFF_HOUR` (0-23) - defaults to 12 (noon)
+- After the cutoff hour on recycling day, the system looks ahead to next week's pickup
+- Reference date: Set via `RECYCLING_REFERENCE_DATE` (YYYY-MM-DD format) - a known recycling/non-recycling week for calculation
+- All calculations use the configured timezone (defaults to Pacific Time)
 
 ## Authentication
 
@@ -109,6 +120,7 @@ curl -H "Authorization: Bearer your-secret-api-key-here" \
    - Add `OPENWEATHER_API_KEY` with your OpenWeatherMap API key
    - Optionally add `LATITUDE` and `LONGITUDE` for your location
    - Optionally add `TIMEZONE` for recycling calculations (defaults to `America/Los_Angeles`)
+   - Optionally add recycling configuration: `RECYCLING_DAY_OF_WEEK`, `RECYCLING_CUTOFF_HOUR`, `RECYCLING_REFERENCE_DATE`, `RECYCLING_REFERENCE_WAS_RECYCLING`
 
 3. **Deploy:**
    ```bash
@@ -125,6 +137,14 @@ npm run build
 **Type checking:**
 ```bash
 npm run type-check
+```
+
+**Run tests:**
+```bash
+npm test              # Run tests once
+npm run test:watch    # Run tests in watch mode
+npm run test:ui       # Run tests with UI
+npm run test:coverage # Run tests with coverage report
 ```
 
 ## Project Structure

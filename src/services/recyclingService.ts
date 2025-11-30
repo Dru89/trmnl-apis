@@ -42,70 +42,89 @@ function getDateInTimezone(date: Date, timezone: string) {
   };
 }
 
+export interface RecyclingConfig {
+  /** The day of the week recycling happens (0 = Sunday, 1 = Monday, ..., 6 = Saturday) */
+  recyclingDayOfWeek?: number;
+  /** The hour cutoff (0-23) after which we look at next week instead of this week */
+  cutoffHour?: number;
+  /** Reference date that was a recycling week (format: YYYY-MM-DD) */
+  referenceDate?: string;
+  /** Whether the reference date was a recycling week */
+  referenceWasRecycling?: boolean;
+}
+
 /**
  * Determines if it's a recycling week based on the reference date.
  *
  * Reference dates:
- * - November 19, 2024 (Tuesday) WAS a recycling week
- * - November 26, 2024 (Tuesday) was NOT a recycling week
+ * - November 18, 2025 (Tuesday) WAS a recycling week
+ * - November 25, 2025 (Tuesday) was NOT a recycling week
  *
- * Recycling occurs every other week on Tuesday mornings.
+ * Recycling occurs every other week on a specified day.
  *
  * Logic:
- * - After 12pm on Tuesday, we start looking at next week
- * - Before 12pm on Tuesday (or Mon-Sun), we look at the upcoming Tuesday
+ * - After cutoff hour on recycling day, we start looking at next week
+ * - Before cutoff hour on recycling day (or other days), we look at the upcoming recycling day
  *
  * @param now - The current date/time (defaults to now)
  * @param timezone - The timezone to use for calculations (e.g., 'America/Los_Angeles')
+ * @param config - Configuration for recycling schedule
  */
 export function getRecyclingInfo(
   now: Date = new Date(),
-  timezone: string = "America/Los_Angeles"
+  timezone: string = "America/Los_Angeles",
+  config: RecyclingConfig = {}
 ): RecyclingInfo {
   const current = getDateInTimezone(now, timezone);
 
-  // Reference: Nov 18, 2025 (Tuesday) WAS a recycling week
-  const referenceDate = new Date(Date.UTC(2025, 10, 18, 0, 0, 0, 0)); // Nov = month 10
-  const referenceWasRecycling = true;
+  // Configuration with defaults
+  const recyclingDayOfWeek = config.recyclingDayOfWeek ?? 2; // Default: Tuesday
+  const cutoffHour = config.cutoffHour ?? 12; // Default: 12pm
+  const referenceDateStr = config.referenceDate ?? "2025-11-18"; // Default: Nov 18, 2025
+  const referenceWasRecycling = config.referenceWasRecycling ?? true;
 
-  // Determine which Tuesday we care about
-  let targetTuesdayUTC: Date;
+  // Parse reference date (assumes format YYYY-MM-DD)
+  const [refYear, refMonth, refDay] = referenceDateStr.split("-").map(Number);
+  const referenceDate = new Date(Date.UTC(refYear, refMonth - 1, refDay, 0, 0, 0, 0));
+
+  // Determine which recycling day we care about
+  let targetDayUTC: Date;
   let isThisWeek: boolean;
 
-  const isTuesday = current.dayOfWeek === 2;
-  const isAfterNoon = current.hour >= 12;
+  const isRecyclingDay = current.dayOfWeek === recyclingDayOfWeek;
+  const isAfterCutoff = current.hour >= cutoffHour;
 
-  if (isTuesday && isAfterNoon) {
-    // Tuesday after noon - look at next week's Tuesday
-    targetTuesdayUTC = new Date(current.midnightUTC);
-    targetTuesdayUTC.setUTCDate(current.midnightUTC.getUTCDate() + 7);
+  if (isRecyclingDay && isAfterCutoff) {
+    // After cutoff on recycling day - look at next week's recycling day
+    targetDayUTC = new Date(current.midnightUTC);
+    targetDayUTC.setUTCDate(current.midnightUTC.getUTCDate() + 7);
     isThisWeek = false;
   } else {
-    // Any other time - look at the upcoming Tuesday (this week or next)
-    const daysUntilTuesday = (2 - current.dayOfWeek + 7) % 7;
+    // Any other time - look at the upcoming recycling day (this week or next)
+    const daysUntilRecyclingDay = (recyclingDayOfWeek - current.dayOfWeek + 7) % 7;
 
-    if (daysUntilTuesday === 0) {
-      // It's Tuesday before noon
-      targetTuesdayUTC = new Date(current.midnightUTC);
+    if (daysUntilRecyclingDay === 0) {
+      // It's recycling day before cutoff
+      targetDayUTC = new Date(current.midnightUTC);
       isThisWeek = true;
     } else {
-      // Sunday, Monday, or Wednesday-Saturday
-      targetTuesdayUTC = new Date(current.midnightUTC);
-      targetTuesdayUTC.setUTCDate(
-        current.midnightUTC.getUTCDate() + daysUntilTuesday
+      // Other days of the week
+      targetDayUTC = new Date(current.midnightUTC);
+      targetDayUTC.setUTCDate(
+        current.midnightUTC.getUTCDate() + daysUntilRecyclingDay
       );
-      // It's "this week" if Tuesday is in the next 0-2 days
-      isThisWeek = daysUntilTuesday <= 2;
+      // It's "this week" if recycling day is in the next 0-2 days
+      isThisWeek = daysUntilRecyclingDay <= 2;
     }
   }
 
-  // Calculate weeks between reference and target Tuesday
+  // Calculate weeks between reference and target recycling day
   const msPerWeek = 7 * 24 * 60 * 60 * 1000;
   const weeksDifference = Math.round(
-    (targetTuesdayUTC.getTime() - referenceDate.getTime()) / msPerWeek
+    (targetDayUTC.getTime() - referenceDate.getTime()) / msPerWeek
   );
 
-  // Determine if target Tuesday is a recycling week
+  // Determine if target day is a recycling week
   // If reference was recycling and even weeks passed, target is also recycling
   // If odd weeks passed, it alternates
   const isRecycling = referenceWasRecycling

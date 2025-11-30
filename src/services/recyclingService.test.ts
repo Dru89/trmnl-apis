@@ -210,4 +210,65 @@ describe("recyclingService", () => {
       });
     });
   });
+
+  describe("getRecyclingInfo with custom config", () => {
+    it("should support custom day of week (Friday recycling)", () => {
+      // Friday, Nov 21, 2025 at 10:00 AM
+      const testDate = date(2025, 11, 21, 10);
+      const result = getRecyclingInfo(testDate, timezone, {
+        recyclingDayOfWeek: 5, // Friday
+        cutoffHour: 12,
+        referenceDate: "2025-11-21", // This Friday is recycling
+        referenceWasRecycling: true,
+      });
+
+      expect(result.isRecyclingWeek).toBe(true);
+      expect(result.message).toBe("This week is recycling pickup");
+    });
+
+    it("should support custom cutoff hour (4pm cutoff)", () => {
+      // Tuesday, Dec 2, 2025 at 2:00 PM (after noon but before 4pm)
+      const testDate = date(2025, 12, 2, 14);
+      const result = getRecyclingInfo(testDate, timezone, {
+        recyclingDayOfWeek: 2, // Tuesday
+        cutoffHour: 16, // 4pm cutoff
+        referenceDate: "2025-11-18",
+        referenceWasRecycling: true,
+      });
+
+      // Should still look at this week since we're before 4pm cutoff
+      expect(result.isRecyclingWeek).toBe(true);
+      expect(result.message).toBe("This week is recycling pickup");
+    });
+
+    it("should apply custom cutoff hour correctly", () => {
+      // Tuesday, Dec 2, 2025 at 5:00 PM (after 4pm cutoff)
+      const testDate = date(2025, 12, 2, 17);
+      const result = getRecyclingInfo(testDate, timezone, {
+        recyclingDayOfWeek: 2, // Tuesday
+        cutoffHour: 16, // 4pm cutoff
+        referenceDate: "2025-11-18",
+        referenceWasRecycling: true,
+      });
+
+      // Should look at next week since we're after 4pm cutoff
+      expect(result.isRecyclingWeek).toBe(false);
+      expect(result.message).toBe("Next week is trash only");
+    });
+
+    it("should support different reference dates", () => {
+      // Monday, Jan 13, 2025 (day before Jan 14)
+      const testDate = date(2025, 1, 13, 10);
+      const result = getRecyclingInfo(testDate, timezone, {
+        recyclingDayOfWeek: 2, // Tuesday
+        cutoffHour: 12,
+        referenceDate: "2025-01-07", // Jan 7 was NOT recycling
+        referenceWasRecycling: false,
+      });
+
+      // Jan 7 was NOT recycling (reference), Jan 14 is 1 week later, so it IS recycling
+      expect(result.isRecyclingWeek).toBe(true);
+      expect(result.message).toBe("This week is recycling pickup");
+    });
+  });
 });

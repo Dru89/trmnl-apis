@@ -37,8 +37,19 @@ app.get('/api/dashboard', async (req: Request, res: Response) => {
     // Fetch weather data
     const weatherData = await getWeatherData(lat, lon);
 
-    // Calculate recycling status with timezone
-    const recyclingInfo = getRecyclingInfo(new Date(), timezone);
+    // Calculate recycling status with timezone and config
+    const recyclingInfo = getRecyclingInfo(new Date(), timezone, {
+      recyclingDayOfWeek: process.env.RECYCLING_DAY_OF_WEEK
+        ? parseInt(process.env.RECYCLING_DAY_OF_WEEK)
+        : undefined,
+      cutoffHour: process.env.RECYCLING_CUTOFF_HOUR
+        ? parseInt(process.env.RECYCLING_CUTOFF_HOUR)
+        : undefined,
+      referenceDate: process.env.RECYCLING_REFERENCE_DATE,
+      referenceWasRecycling: process.env.RECYCLING_REFERENCE_WAS_RECYCLING
+        ? process.env.RECYCLING_REFERENCE_WAS_RECYCLING === 'true'
+        : undefined,
+    });
 
     const dashboardData: DashboardData = {
       temperature: weatherData.temperature,
