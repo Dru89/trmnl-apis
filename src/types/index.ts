@@ -18,6 +18,7 @@ export interface DashboardData {
   moonPhase: number;
   weather: WeatherCondition;
   isRecyclingWeek: boolean;
+  recyclingMessage: string;
 }
 
 export interface OpenWeatherResponse {

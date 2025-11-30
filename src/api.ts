@@ -3,7 +3,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import serverless from 'serverless-http';
 import { validateApiKey } from './middleware/auth';
 import { getWeatherData } from './services/weatherService';
-import { isRecyclingWeek } from './services/recyclingService';
+import { getRecyclingInfo } from './services/recyclingService';
 import { DashboardData } from './types';
 
 const app = express();
@@ -28,6 +28,7 @@ app.get('/api/dashboard', async (req: Request, res: Response) => {
     // Default coordinates - you can make these configurable via env vars if needed
     const lat = parseFloat(process.env.LATITUDE || '40.7128');
     const lon = parseFloat(process.env.LONGITUDE || '-74.0060');
+    const timezone = process.env.TIMEZONE || 'America/Los_Angeles';
 
     if (isNaN(lat) || isNaN(lon)) {
       throw new Error(`Invalid coordinates: LATITUDE=${process.env.LATITUDE}, LONGITUDE=${process.env.LONGITUDE}`);
@@ -36,14 +37,15 @@ app.get('/api/dashboard', async (req: Request, res: Response) => {
     // Fetch weather data
     const weatherData = await getWeatherData(lat, lon);
 
-    // Calculate recycling status
-    const recycling = isRecyclingWeek();
+    // Calculate recycling status with timezone
+    const recyclingInfo = getRecyclingInfo(new Date(), timezone);
 
     const dashboardData: DashboardData = {
       temperature: weatherData.temperature,
       moonPhase: weatherData.moonPhase,
       weather: weatherData.weather,
-      isRecyclingWeek: recycling
+      isRecyclingWeek: recyclingInfo.isRecyclingWeek,
+      recyclingMessage: recyclingInfo.message
     };
 
     res.json(dashboardData);

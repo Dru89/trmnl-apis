@@ -19,6 +19,7 @@ A TypeScript serverless API service built with Express and deployed on Netlify. 
    OPENWEATHER_API_KEY=your-openweather-api-key-here
    LATITUDE=40.7128
    LONGITUDE=-74.0060
+   TIMEZONE=America/Los_Angeles
    ```
    Get a free OpenWeatherMap API key at https://openweathermap.org/api
 
@@ -70,11 +71,20 @@ Returns current weather conditions, moon phase, temperature, and recycling sched
   "temperature": 72,
   "moonPhase": 0.5,
   "weather": "partly_cloudy",
-  "isRecyclingWeek": true
+  "isRecyclingWeek": true,
+  "recyclingMessage": "This week is recycling pickup"
 }
 ```
 
-Weather conditions enum: `clear`, `partly_cloudy`, `cloudy`, `rain`, `snow`, `thunderstorm`, `drizzle`, `mist`, `unknown`
+**Weather conditions:** `clear`, `partly_cloudy`, `cloudy`, `rain`, `snow`, `thunderstorm`, `drizzle`, `mist`, `unknown`
+
+**Recycling messages:**
+- `"This week is recycling pickup"` - Recycling pickup is this Tuesday
+- `"Next week is recycling pickup"` - Recycling pickup is next Tuesday
+- `"This week is trash only"` - No recycling this Tuesday
+- `"Next week is trash only"` - No recycling next Tuesday
+
+**Note:** Recycling calculations use the configured timezone (defaults to Pacific Time). After 12pm on Tuesday, the system looks ahead to next week's pickup.
 
 ## Authentication
 
@@ -98,6 +108,7 @@ curl -H "Authorization: Bearer your-secret-api-key-here" \
    - Add `API_KEY` with your secret key
    - Add `OPENWEATHER_API_KEY` with your OpenWeatherMap API key
    - Optionally add `LATITUDE` and `LONGITUDE` for your location
+   - Optionally add `TIMEZONE` for recycling calculations (defaults to `America/Los_Angeles`)
 
 3. **Deploy:**
    ```bash
