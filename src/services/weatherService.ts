@@ -1,7 +1,7 @@
 import {
   WeatherCondition,
   WeatherConditions,
-  OpenWeatherResponse,
+  isOpenWeatherResponse,
 } from "../types";
 import Cache from "./cache";
 
@@ -92,15 +92,11 @@ async function getWeatherDataFromAPI(
     );
   }
 
-  const data = (await response.json()) as OpenWeatherResponse;
+  const data = await response.json();
 
-  // Validate response structure
-  if (!data.daily || data.daily.length === 0) {
-    throw new Error("No daily forecast data available from API");
-  }
-
-  if (!data.current || typeof data.current.temp !== "number") {
-    throw new Error("Invalid or missing current temperature data");
+  // Validate response structure using type guard
+  if (!isOpenWeatherResponse(data)) {
+    throw new Error("Invalid response format from OpenWeatherMap API");
   }
 
   // Get all weather conditions for today and find the most significant
