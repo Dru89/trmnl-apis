@@ -1,45 +1,44 @@
-import { WeatherCondition, OpenWeatherResponse } from "../types";
-import { getStore } from "@netlify/blobs";
+import { WeatherCondition, WeatherConditions, OpenWeatherResponse } from "../types";
 import Cache from "./cache";
 
 /**
- * Maps OpenWeatherMap weather condition IDs to our WeatherCondition enum
+ * Maps OpenWeatherMap weather condition IDs to our WeatherCondition type
  * https://openweathermap.org/weather-conditions
  */
 function mapWeatherCondition(weatherId: number): WeatherCondition {
   // Thunderstorm (200-232)
   if (weatherId >= 200 && weatherId < 300) {
-    return WeatherCondition.THUNDERSTORM;
+    return WeatherConditions.THUNDERSTORM;
   }
   // Drizzle (300-321)
   if (weatherId >= 300 && weatherId < 400) {
-    return WeatherCondition.DRIZZLE;
+    return WeatherConditions.DRIZZLE;
   }
   // Rain (500-531)
   if (weatherId >= 500 && weatherId < 600) {
-    return WeatherCondition.RAIN;
+    return WeatherConditions.RAIN;
   }
   // Snow (600-622)
   if (weatherId >= 600 && weatherId < 700) {
-    return WeatherCondition.SNOW;
+    return WeatherConditions.SNOW;
   }
   // Atmosphere (701-781) - mist, fog, haze, etc.
   if (weatherId >= 700 && weatherId < 800) {
-    return WeatherCondition.MIST;
+    return WeatherConditions.MIST;
   }
   // Clear (800)
   if (weatherId === 800) {
-    return WeatherCondition.CLEAR;
+    return WeatherConditions.CLEAR;
   }
   // Clouds (801-804)
   if (weatherId === 801 || weatherId === 802) {
-    return WeatherCondition.PARTLY_CLOUDY;
+    return WeatherConditions.PARTLY_CLOUDY;
   }
   if (weatherId === 803 || weatherId === 804) {
-    return WeatherCondition.CLOUDY;
+    return WeatherConditions.CLOUDY;
   }
 
-  return WeatherCondition.UNKNOWN;
+  return WeatherConditions.UNKNOWN;
 }
 
 /**
@@ -50,22 +49,22 @@ function getMostSignificantWeather(
   conditions: WeatherCondition[]
 ): WeatherCondition {
   const priority: Record<WeatherCondition, number> = {
-    [WeatherCondition.SNOW]: 7,
-    [WeatherCondition.THUNDERSTORM]: 6,
-    [WeatherCondition.RAIN]: 5,
-    [WeatherCondition.DRIZZLE]: 4,
-    [WeatherCondition.MIST]: 3,
-    [WeatherCondition.CLOUDY]: 2,
-    [WeatherCondition.PARTLY_CLOUDY]: 1,
-    [WeatherCondition.CLEAR]: 0,
-    [WeatherCondition.UNKNOWN]: -1,
+    [WeatherConditions.SNOW]: 7,
+    [WeatherConditions.THUNDERSTORM]: 6,
+    [WeatherConditions.RAIN]: 5,
+    [WeatherConditions.DRIZZLE]: 4,
+    [WeatherConditions.MIST]: 3,
+    [WeatherConditions.CLOUDY]: 2,
+    [WeatherConditions.PARTLY_CLOUDY]: 1,
+    [WeatherConditions.CLEAR]: 0,
+    [WeatherConditions.UNKNOWN]: -1,
   };
 
   return conditions.reduce((mostSignificant, current) => {
     return priority[current] > priority[mostSignificant]
       ? current
       : mostSignificant;
-  }, WeatherCondition.CLEAR);
+  }, WeatherConditions.CLEAR);
 }
 
 interface WeatherData {

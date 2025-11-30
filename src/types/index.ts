@@ -1,14 +1,16 @@
-export enum WeatherCondition {
-  CLEAR = 'clear',
-  PARTLY_CLOUDY = 'partly_cloudy',
-  CLOUDY = 'cloudy',
-  RAIN = 'rain',
-  SNOW = 'snow',
-  THUNDERSTORM = 'thunderstorm',
-  DRIZZLE = 'drizzle',
-  MIST = 'mist',
-  UNKNOWN = 'unknown'
-}
+export const WeatherConditions = {
+  CLEAR: 'clear',
+  PARTLY_CLOUDY: 'partly_cloudy',
+  CLOUDY: 'cloudy',
+  RAIN: 'rain',
+  SNOW: 'snow',
+  THUNDERSTORM: 'thunderstorm',
+  DRIZZLE: 'drizzle',
+  MIST: 'mist',
+  UNKNOWN: 'unknown',
+} as const;
+
+export type WeatherCondition = typeof WeatherConditions[keyof typeof WeatherConditions];
 
 export interface DashboardData {
   temperature: number;
