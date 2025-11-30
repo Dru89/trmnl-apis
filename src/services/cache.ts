@@ -108,12 +108,13 @@ export default class Cache<T> {
   }
 
   async get(key: string): Promise<T | null> {
-    return this.#getLocalCache(key) ?? this.#getNetlify(key);
+    const local = this.#getLocalCache(key);
+    return local ?? await this.#getNetlify(key);
   }
 
   async set(key: string, value: T): Promise<void> {
     const now = Date.now();
     this.#setLocalCache(key, value, now);
-    this.#setNetlify(key, value, now);
+    await this.#setNetlify(key, value, now);
   }
 }

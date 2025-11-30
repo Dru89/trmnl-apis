@@ -1,4 +1,8 @@
-import { WeatherCondition, WeatherConditions, OpenWeatherResponse } from "../types";
+import {
+  WeatherCondition,
+  WeatherConditions,
+  OpenWeatherResponse,
+} from "../types";
 import Cache from "./cache";
 
 /**
@@ -90,11 +94,23 @@ async function getWeatherDataFromAPI(
 
   const data = (await response.json()) as OpenWeatherResponse;
 
+  // Validate response structure
+  if (!data.daily || data.daily.length === 0) {
+    throw new Error("No daily forecast data available from API");
+  }
+
+  if (!data.current || typeof data.current.temp !== "number") {
+    throw new Error("Invalid or missing current temperature data");
+  }
+
   // Get all weather conditions for today and find the most significant
-  const todayWeatherConditions = data.daily[0].weather.map((w) =>
-    mapWeatherCondition(w.id)
-  );
-  const weather = getMostSignificantWeather(todayWeatherConditions);
+  const todayWeatherConditions =
+    data.daily[0]?.weather?.map((w) => mapWeatherCondition(w.id)) || [];
+
+  const weather =
+    todayWeatherConditions.length > 0
+      ? getMostSignificantWeather(todayWeatherConditions)
+      : WeatherConditions.UNKNOWN;
 
   return {
     temperature: Math.round(data.current.temp),

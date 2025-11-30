@@ -29,6 +29,10 @@ app.get('/api/dashboard', async (req: Request, res: Response) => {
     const lat = parseFloat(process.env.LATITUDE || '40.7128');
     const lon = parseFloat(process.env.LONGITUDE || '-74.0060');
 
+    if (isNaN(lat) || isNaN(lon)) {
+      throw new Error(`Invalid coordinates: LATITUDE=${process.env.LATITUDE}, LONGITUDE=${process.env.LONGITUDE}`);
+    }
+
     // Fetch weather data
     const weatherData = await getWeatherData(lat, lon);
 
